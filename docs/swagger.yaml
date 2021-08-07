@@ -1,0 +1,156 @@
+definitions:
+  models.BlockInfo:
+    properties:
+      block_hash:
+        type: string
+      block_num:
+        type: integer
+      block_time:
+        type: integer
+      parent_hash:
+        type: string
+    type: object
+  models.GetBlockByNumRes:
+    properties:
+      block_hash:
+        type: string
+      block_num:
+        type: integer
+      block_time:
+        type: integer
+      parent_hash:
+        type: string
+      transactions:
+        items:
+          type: string
+        type: array
+    type: object
+  models.GetLatestNBlockRes:
+    properties:
+      blocks:
+        items:
+          $ref: '#/definitions/models.BlockInfo'
+        type: array
+    type: object
+  models.GetTransactionByHashRes:
+    properties:
+      data:
+        type: string
+      from:
+        type: string
+      logs:
+        items:
+          $ref: '#/definitions/models.Log'
+        type: array
+      nonce:
+        type: integer
+      to:
+        type: string
+      tx_hash:
+        type: string
+      value:
+        type: string
+    type: object
+  models.Log:
+    properties:
+      data:
+        type: string
+      index:
+        type: integer
+    type: object
+info:
+  contact: {}
+  title: Swagger
+  version: 0.0.1
+paths:
+  /blocks:
+    get:
+      consumes:
+      - application/json
+      description: get latest n block information
+      parameters:
+      - description: limit
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ok
+          schema:
+            $ref: '#/definitions/models.GetLatestNBlockRes'
+        "204":
+          description: no content
+        "500":
+          description: internal error
+      summary: get latest n block information
+      tags:
+      - Block Chain Information
+  /blocks/{id}:
+    get:
+      consumes:
+      - application/json
+      description: get block information by block number
+      parameters:
+      - description: id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ok
+          schema:
+            $ref: '#/definitions/models.GetBlockByNumRes'
+        "204":
+          description: no content
+        "500":
+          description: internal error
+      summary: get block information by block number
+      tags:
+      - Block Chain Information
+  /health:
+    get:
+      responses:
+        "200":
+          description: ok
+          schema:
+            type: string
+      summary: health checker API
+  /transaction/{txHash}:
+    get:
+      consumes:
+      - application/json
+      description: get transaction information by hash
+      parameters:
+      - description: txHash
+        in: path
+        name: txHash
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ok
+          schema:
+            $ref: '#/definitions/models.GetTransactionByHashRes'
+        "204":
+          description: no content
+        "500":
+          description: internal error
+      summary: get transaction information by hash
+      tags:
+      - Block Chain Information
+  /version:
+    get:
+      responses:
+        "200":
+          description: 0.0.1
+          schema:
+            type: string
+      summary: service version API
+swagger: "2.0"
