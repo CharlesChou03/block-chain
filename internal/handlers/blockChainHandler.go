@@ -80,6 +80,7 @@ func GetBlockByNumHandler(c *gin.Context) {
 // @Param txHash path string true "txHash"
 // @Success 200 {object} modelsRes.GetTransactionByHashRes "ok"
 // @Failure 204 "no content"
+// @Failure 400 "bad request"
 // @Failure 500 "internal error"
 // @Router /transaction/{txHash} [get]
 func GetTransactionByHashHandler(c *gin.Context) {

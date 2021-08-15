@@ -153,6 +153,9 @@ var doc = `{
                     "204": {
                         "description": "no content"
                     },
+                    "400": {
+                        "description": "bad request"
+                    },
                     "500": {
                         "description": "internal error"
                     }

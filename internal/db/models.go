@@ -38,3 +38,26 @@ type TransactionLog struct {
 	Data        string      `gorm:"type:text DEFAULT NULL" json:"data"`
 	Transaction Transaction `gorm:"foreignKey:TxId"`
 }
+
+type RedisBlockData struct {
+	BlockNum     uint64
+	BlockHash    string
+	BlockTime    uint64
+	ParentHash   string
+	Transactions []string
+}
+
+type RedisTxData struct {
+	TxHash string
+	From   string
+	To     string
+	Nonce  uint64
+	Data   string
+	Value  string
+	Logs   []RedisTxLogData
+}
+
+type RedisTxLogData struct {
+	Index uint
+	Data  string
+}

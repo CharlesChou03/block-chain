@@ -1,6 +1,8 @@
 package services
 
 import (
+	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/CharlesChou03/_git/block-chain.git/internal/db"
@@ -8,6 +10,10 @@ import (
 	modelsReq "github.com/CharlesChou03/_git/block-chain.git/models/request"
 	modelsRes "github.com/CharlesChou03/_git/block-chain.git/models/response"
 )
+
+var blockCacheKeyPrefix = "blockNum:"
+var txCacheKeyPrefix = "txHash:"
+var withoutExpired = int64(0)
 
 func GetBlocks(req *modelsReq.GetLatestNBlockReq, res *modelsRes.GetLatestNBlockRes) (int, models.BlockChainError) {
 	if !req.Validate() {
@@ -43,20 +49,26 @@ func getBlockListFromEthereum(req *modelsReq.GetLatestNBlockReq, res *modelsRes.
 func saveBlockDataToDB(blockDataList []BlockData) {
 	dbBlockDataList := []db.Block{}
 	blockNumList := []uint64{}
-	dbBlockData := db.Block{}
 	if len(blockDataList) == 0 {
 		return
 	}
+
 	date := time.Now().UTC()
-	dbBlockData.CreateTime = date
-	dbBlockData.UpdateTime = date
+
+	cacheKeyValuePair := make(map[string][]byte)
 
 	blockTxMap := make(map[uint64][]string)
 	for _, block := range blockDataList {
-		dbBlockData.BlockNum = block.BlockNum
-		dbBlockData.BlockHash = block.BlockHash
-		dbBlockData.BlockTime = block.BlockTime
-		dbBlockData.ParentHash = block.ParentHash
+		cacheKey := blockCacheKeyPrefix + fmt.Sprint(block.BlockNum)
+		cacheBlockData := genBlockCacheData(block)
+		cacheValue, err := json.Marshal(cacheBlockData)
+		if err == nil {
+			cacheKeyValuePair[cacheKey] = cacheValue
+		}
+
+		dbBlockData := genBlockDBData(block)
+		dbBlockData.CreateTime = date
+		dbBlockData.UpdateTime = date
 		dbBlockDataList = append(dbBlockDataList, dbBlockData)
 		blockNumList = append(blockNumList, block.BlockNum)
 		txList := block.Transactions
@@ -65,6 +77,7 @@ func saveBlockDataToDB(blockDataList []BlockData) {
 		}
 	}
 
+	db.RedisDB.MSetValueToCache(cacheKeyValuePair, withoutExpired)
 	db.MySQLDB.InsertBlockDataList(dbBlockDataList)
 	blocksFromDB := []db.Block{}
 	queryResult := db.MySQLDB.QueryBlocksByNumList([]string{"id", "block_num"}, blockNumList, &blocksFromDB)
@@ -87,6 +100,25 @@ func saveBlockDataToDB(blockDataList []BlockData) {
 	}
 }
 
+func genBlockCacheData(block BlockData) db.RedisBlockData {
+	cacheBlockData := db.RedisBlockData{}
+	cacheBlockData.BlockNum = block.BlockNum
+	cacheBlockData.BlockHash = block.BlockHash
+	cacheBlockData.BlockTime = block.BlockTime
+	cacheBlockData.ParentHash = block.ParentHash
+	cacheBlockData.Transactions = block.Transactions
+	return cacheBlockData
+}
+
+func genBlockDBData(block BlockData) db.Block {
+	dbBlockData := db.Block{}
+	dbBlockData.BlockNum = block.BlockNum
+	dbBlockData.BlockHash = block.BlockHash
+	dbBlockData.BlockTime = block.BlockTime
+	dbBlockData.ParentHash = block.ParentHash
+	return dbBlockData
+}
+
 func GetBlock(req *modelsReq.GetBlockByNumReq, res *modelsRes.GetBlockByNumRes) (int, models.BlockChainError) {
 	if !req.Validate() {
 		return 400, models.BadRequestError
@@ -96,8 +128,57 @@ func GetBlock(req *modelsReq.GetBlockByNumReq, res *modelsRes.GetBlockByNumRes) 
 	if statusCode == 204 {
 		return getBlockFromEthereum(req, res)
 	}
-
 	return 200, models.NoError
+}
+
+func getBlockFromDB(blockNum uint64, res *modelsRes.GetBlockByNumRes) (int, models.BlockChainError) {
+	statusCode, _ := getBlockFromCache(blockNum, res)
+	if statusCode == 200 {
+		return 200, models.NoError
+	}
+
+	blocksFromDB := []db.Block{}
+	db.MySQLDB.QueryBlock(blockNum, &blocksFromDB)
+	if len(blocksFromDB) == 0 {
+		return 204, models.NotFoundError
+	}
+	block := blocksFromDB[0]
+	blockId := block.ID
+	res.BlockNum = block.BlockNum
+	res.BlockHash = block.BlockHash
+	res.BlockTime = block.BlockTime
+	res.ParentHash = block.ParentHash
+
+	blockTxsFromDB := []db.BlockTransaction{}
+	db.MySQLDB.QueryBlockTxsByBlockId([]string{"tx_hash"}, blockId, &blockTxsFromDB)
+
+	if len(blockTxsFromDB) == 0 {
+		res.Transactions = []string{}
+	} else {
+		for _, transaction := range blockTxsFromDB {
+			res.Transactions = append(res.Transactions, transaction.TxHash)
+		}
+	}
+	return 200, models.NoError
+}
+
+func getBlockFromCache(blockNum uint64, res *modelsRes.GetBlockByNumRes) (int, models.BlockChainError) {
+	blockFromCache := db.RedisBlockData{}
+	cacheKey := blockCacheKeyPrefix + fmt.Sprint(blockNum)
+	cacheData := db.RedisDB.GetValueFromCache(cacheKey)
+	if cacheData != "" {
+		if err := json.Unmarshal([]byte(cacheData), &blockFromCache); err != nil {
+			fmt.Printf("[getBlockFromCache] parse error: %+v", err)
+		} else {
+			res.BlockNum = blockFromCache.BlockNum
+			res.BlockHash = blockFromCache.BlockHash
+			res.BlockTime = blockFromCache.BlockTime
+			res.ParentHash = blockFromCache.ParentHash
+			res.Transactions = blockFromCache.Transactions
+			return 200, models.NoError
+		}
+	}
+	return 204, models.NotFoundError
 }
 
 func getBlockFromEthereum(req *modelsReq.GetBlockByNumReq, res *modelsRes.GetBlockByNumRes) (int, models.BlockChainError) {
@@ -125,32 +206,6 @@ func getBlockFromEthereum(req *modelsReq.GetBlockByNumReq, res *modelsRes.GetBlo
 	return 200, models.NoError
 }
 
-func getBlockFromDB(blockNum uint64, res *modelsRes.GetBlockByNumRes) (int, models.BlockChainError) {
-	blocksFromDB := []db.Block{}
-	db.MySQLDB.QueryBlock(blockNum, &blocksFromDB)
-	if len(blocksFromDB) == 0 {
-		return 204, models.NotFoundError
-	}
-	block := blocksFromDB[0]
-	blockId := block.ID
-	res.BlockNum = block.BlockNum
-	res.BlockHash = block.BlockHash
-	res.BlockTime = block.BlockTime
-	res.ParentHash = block.ParentHash
-
-	blockTxsFromDB := []db.BlockTransaction{}
-	db.MySQLDB.QueryBlockTxsByBlockId([]string{"tx_hash"}, blockId, &blockTxsFromDB)
-
-	if len(blockTxsFromDB) == 0 {
-		res.Transactions = []string{}
-	} else {
-		for _, transaction := range blockTxsFromDB {
-			res.Transactions = append(res.Transactions, transaction.TxHash)
-		}
-	}
-	return 200, models.NoError
-}
-
 func GetTransaction(req *modelsReq.GetTransactionByHashReq, res *modelsRes.GetTransactionByHashRes) (int, models.BlockChainError) {
 	if !req.Validate() {
 		return 400, models.BadRequestError
@@ -165,6 +220,11 @@ func GetTransaction(req *modelsReq.GetTransactionByHashReq, res *modelsRes.GetTr
 }
 
 func getTxFromDB(txHash string, res *modelsRes.GetTransactionByHashRes) (int, models.BlockChainError) {
+	statusCode, _ := getTxFromCache(txHash, res)
+	if statusCode == 200 {
+		return 200, models.NoError
+	}
+
 	transactionsFromDB := []db.Transaction{}
 	db.MySQLDB.QueryTransactionByTxHash([]string{"*"}, txHash, &transactionsFromDB)
 	if len(transactionsFromDB) == 0 {
@@ -195,6 +255,36 @@ func getTxFromDB(txHash string, res *modelsRes.GetTransactionByHashRes) (int, mo
 	return 200, models.NoError
 }
 
+func getTxFromCache(txHash string, res *modelsRes.GetTransactionByHashRes) (int, models.BlockChainError) {
+	txFromCache := db.RedisTxData{}
+	cacheKey := txCacheKeyPrefix + txHash
+	cacheData := db.RedisDB.GetValueFromCache(cacheKey)
+	if cacheData != "" {
+		if err := json.Unmarshal([]byte(cacheData), &txFromCache); err != nil {
+			fmt.Printf("[getTxFromCache] parse error: %+v", err)
+		} else {
+			res.TxHash = txFromCache.TxHash
+			res.From = txFromCache.From
+			res.To = txFromCache.To
+			res.Nonce = txFromCache.Nonce
+			res.Data = txFromCache.Data
+			res.Value = txFromCache.Value
+			if len(txFromCache.Logs) == 0 {
+				res.Logs = []modelsRes.Log{}
+			} else {
+				for _, l := range txFromCache.Logs {
+					log := modelsRes.Log{}
+					log.Index = l.Index
+					log.Data = l.Data
+					res.Logs = append(res.Logs, log)
+				}
+			}
+			return 200, models.NoError
+		}
+	}
+	return 204, models.NotFoundError
+}
+
 func getTxFromEthereum(txHash string, res *modelsRes.GetTransactionByHashRes) (int, models.BlockChainError) {
 	statusCode, tx, _ := GetTransactionFromEthereum(txHash)
 	if statusCode != 200 {
@@ -216,12 +306,19 @@ func getTxFromEthereum(txHash string, res *modelsRes.GetTransactionByHashRes) (i
 		}
 	}
 	if tx.IsPending == false {
-		go saveTxDataListToDB(tx)
+		go saveTxDataToDB(tx)
 	}
 	return 200, models.NoError
 }
 
-func saveTxDataListToDB(tx TransactionData) {
+func saveTxDataToDB(tx TransactionData) {
+	cacheKey := txCacheKeyPrefix + tx.TxHash
+	cacheTxData := genTxCacheData(tx)
+	cacheValue, err := json.Marshal(cacheTxData)
+	if err == nil {
+		db.RedisDB.SetValueToCache(cacheKey, cacheValue, withoutExpired)
+	}
+
 	txDBData := genTxDBData(tx)
 	date := time.Now().UTC()
 	txDBData.CreateTime = date
@@ -244,6 +341,27 @@ func saveTxDataListToDB(tx TransactionData) {
 			db.MySQLDB.InsertTxLogList(dbTxLogs)
 		}
 	}
+}
+
+func genTxCacheData(tx TransactionData) db.RedisTxData {
+	cacheTxData := db.RedisTxData{}
+	cacheTxData.TxHash = tx.TxHash
+	cacheTxData.From = tx.From
+	cacheTxData.To = tx.To
+	cacheTxData.Nonce = tx.Nonce
+	cacheTxData.Data = tx.Data
+	cacheTxData.Value = tx.Value
+	if len(tx.Logs) == 0 {
+		cacheTxData.Logs = []db.RedisTxLogData{}
+	} else {
+		for _, l := range tx.Logs {
+			log := db.RedisTxLogData{}
+			log.Index = l.Index
+			log.Data = l.Data
+			cacheTxData.Logs = append(cacheTxData.Logs, log)
+		}
+	}
+	return cacheTxData
 }
 
 func genTxDBData(tx TransactionData) db.Transaction {
