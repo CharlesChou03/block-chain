@@ -55,6 +55,12 @@ var doc = `{
                     "204": {
                         "description": "no content"
                     },
+                    "400": {
+                        "description": "bad request"
+                    },
+                    "424": {
+                        "description": "failed dependency"
+                    },
                     "500": {
                         "description": "internal error"
                     }
@@ -92,6 +98,9 @@ var doc = `{
                     },
                     "204": {
                         "description": "no content"
+                    },
+                    "400": {
+                        "description": "bad request"
                     },
                     "500": {
                         "description": "internal error"

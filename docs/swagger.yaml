@@ -82,6 +82,10 @@ paths:
             $ref: '#/definitions/models.GetLatestNBlockRes'
         "204":
           description: no content
+        "400":
+          description: bad request
+        "424":
+          description: failed dependency
         "500":
           description: internal error
       summary: get latest n block information
@@ -107,6 +111,8 @@ paths:
             $ref: '#/definitions/models.GetBlockByNumRes'
         "204":
           description: no content
+        "400":
+          description: bad request
         "500":
           description: internal error
       summary: get block information by block number

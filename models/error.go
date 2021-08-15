@@ -11,4 +11,6 @@ var NotFoundError = BlockChainError{Code: 20401, Msg: "data not found"}
 
 var BadRequestError = BlockChainError{Code: 40001, Msg: "Bad request"}
 
+var FailedDependencyError = BlockChainError{Code: 42401, Msg: "Failed dependency"}
+
 var InternalServerError = BlockChainError{Code: 50001, Msg: "Internal server error"}

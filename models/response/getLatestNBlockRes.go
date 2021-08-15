@@ -5,8 +5,8 @@ type GetLatestNBlockRes struct {
 }
 
 type BlockInfo struct {
-	BlockNum   int64  `json:"block_num"`
+	BlockNum   uint64 `json:"block_num"`
 	BlockHash  string `json:"block_hash"`
-	BlockTime  int64  `json:"block_time"`
+	BlockTime  uint64 `json:"block_time"`
 	ParentHash string `json:"parent_hash"`
 }

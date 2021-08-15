@@ -16,6 +16,7 @@ var (
 	RedisHost     = ""
 	RedisPort     = ""
 	RedisPassword = ""
+	RPCEndpoint   = ""
 )
 
 func Setup() {
@@ -28,4 +29,5 @@ func Setup() {
 	RedisHost = os.Getenv("REDIS_HOST")
 	RedisPort = os.Getenv("REDIS_PORT")
 	RedisPassword = os.Getenv("REDIS_PASSWORD")
+	RPCEndpoint = os.Getenv("RPC_ENDPOINT")
 }

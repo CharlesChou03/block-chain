@@ -1,7 +1,7 @@
 package models
 
 type GetBlockByNumReq struct {
-	BlockNum int `uri:"id"`
+	BlockNum uint64 `uri:"id"`
 }
 
 func (r *GetBlockByNumReq) Validate() bool {

@@ -19,18 +19,24 @@ import (
 // @Param limit query int false "limit"
 // @Success 200 {object} modelsRes.GetLatestNBlockRes "ok"
 // @Failure 204 "no content"
+// @Failure 400 "bad request"
+// @Failure 424 "failed dependency"
 // @Failure 500 "internal error"
 // @Router /blocks [get]
 func GetLatestNBlockHandler(c *gin.Context) {
 	req := modelsReq.GetLatestNBlockReq{}
 	res := modelsRes.GetLatestNBlockRes{}
 	c.Bind(&req)
-	statusCode, resp, err := services.GetBlocks(&req, &res)
+	statusCode, err := services.GetBlocks(&req, &res)
 	switch statusCode {
 	case 200:
-		c.JSON(http.StatusOK, resp)
+		c.JSON(http.StatusOK, res)
 	case 204:
 		c.JSON(http.StatusNoContent, err)
+	case 400:
+		c.JSON(http.StatusBadRequest, err)
+	case 424:
+		c.JSON(http.StatusFailedDependency, err)
 	default:
 		c.JSON(http.StatusInternalServerError, models.InternalServerError)
 	}
@@ -45,16 +51,17 @@ func GetLatestNBlockHandler(c *gin.Context) {
 // @Param id path int true "id"
 // @Success 200 {object} modelsRes.GetBlockByNumRes "ok"
 // @Failure 204 "no content"
+// @Failure 400 "bad request"
 // @Failure 500 "internal error"
 // @Router /blocks/{id} [get]
 func GetBlockByNumHandler(c *gin.Context) {
 	req := modelsReq.GetBlockByNumReq{}
 	res := modelsRes.GetBlockByNumRes{}
 	c.BindUri(&req)
-	statusCode, resp, err := services.GetBlock(&req, &res)
+	statusCode, err := services.GetBlock(&req, &res)
 	switch statusCode {
 	case 200:
-		c.JSON(http.StatusOK, resp)
+		c.JSON(http.StatusOK, res)
 	case 204:
 		c.JSON(http.StatusNoContent, err)
 	case 400:
@@ -79,10 +86,10 @@ func GetTransactionByHashHandler(c *gin.Context) {
 	req := modelsReq.GetTransactionByHashReq{}
 	res := modelsRes.GetTransactionByHashRes{}
 	c.BindUri(&req)
-	statusCode, resp, err := services.GetTransaction(&req, &res)
+	statusCode, err := services.GetTransaction(&req, &res)
 	switch statusCode {
 	case 200:
-		c.JSON(http.StatusOK, resp)
+		c.JSON(http.StatusOK, res)
 	case 204:
 		c.JSON(http.StatusNoContent, err)
 	case 400:
