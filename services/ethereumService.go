@@ -54,12 +54,12 @@ func getSpecificBlock(blockNum uint64) (int, []BlockData, error) {
 	defer client.Close()
 	blockDataList := []BlockData{}
 	if err != nil {
-		fmt.Printf("%+v\n", err)
+		fmt.Printf("[getSpecificBlock] ethclient error: %+v\n", err)
 		return 424, blockDataList, err
 	}
 	specificBlock, err := client.BlockByNumber(context.Background(), new(big.Int).SetUint64(blockNum))
 	if err != nil {
-		fmt.Printf("%+v\n", err)
+		fmt.Printf("[getSpecificBlock] BlockByNumber error: %+v\n", err)
 		return 424, blockDataList, err
 	}
 	specificBlockData := genBlockData(specificBlock)
@@ -72,12 +72,12 @@ func getBlockList(limit int) (int, []BlockData, error) {
 	defer client.Close()
 	blockDataList := []BlockData{}
 	if err != nil {
-		fmt.Printf("%+v\n", err)
+		fmt.Printf("[getBlockList] ethclient error: %+v\n", err)
 		return 424, blockDataList, err
 	}
 	latestBlock, err := client.BlockByNumber(context.Background(), nil)
 	if err != nil {
-		fmt.Printf("%+v\n", err)
+		fmt.Printf("[getBlockList] BlockByNumber error: %+v\n", err)
 		return 424, blockDataList, err
 	}
 	latestBlockNum := latestBlock.Header().Number
@@ -143,20 +143,20 @@ func GetTransactionFromEthereum(txHashHex string) (int, TransactionData, error) 
 	defer client.Close()
 	transactionData := TransactionData{}
 	if err != nil {
-		fmt.Printf("ethclient error: %+v\n", err)
+		fmt.Printf("[GetTransactionFromEthereum] ethclient error: %+v\n", err)
 		return 424, transactionData, err
 	}
 
 	txHash := common.HexToHash(txHashHex)
 	tx, isPending, err := client.TransactionByHash(context.Background(), txHash)
 	if err != nil {
-		fmt.Printf("TransactionByHash error: %+v\n", err)
+		fmt.Printf("[GetTransactionFromEthereum] TransactionByHash error: %+v\n", err)
 		return 204, transactionData, err
 	}
 
 	msg, err := tx.AsMessage(types.NewEIP155Signer(tx.ChainId()), nil)
 	if err != nil {
-		fmt.Printf("AsMessage error: %+v\n", err)
+		fmt.Printf("[GetTransactionFromEthereum] AsMessage error: %+v\n", err)
 		return 424, transactionData, err
 	}
 

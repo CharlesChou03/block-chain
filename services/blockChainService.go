@@ -103,7 +103,7 @@ func GetBlock(req *modelsReq.GetBlockByNumReq, res *modelsRes.GetBlockByNumRes) 
 func getBlockFromEthereum(req *modelsReq.GetBlockByNumReq, res *modelsRes.GetBlockByNumRes) (int, models.BlockChainError) {
 	statusCode, blockDataList, _ := GetBlockDataFromEthereum(0, req.BlockNum, false)
 	if statusCode != 200 {
-		return 424, models.FailedDependencyError
+		return 204, models.NotFoundError
 	}
 	if len(blockDataList) == 0 {
 		return 204, models.NotFoundError

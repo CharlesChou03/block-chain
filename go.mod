@@ -4,13 +4,12 @@ go 1.16
 
 require (
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751
-	github.com/ethereum/go-ethereum v1.10.6 // indirect
+	github.com/ethereum/go-ethereum v1.10.6
 	github.com/gin-gonic/gin v1.7.1
 	github.com/go-openapi/jsonreference v0.19.6 // indirect
 	github.com/go-openapi/spec v0.20.3 // indirect
 	github.com/go-openapi/swag v0.19.15 // indirect
 	github.com/go-redis/redis v6.15.9+incompatible
-	github.com/golang/protobuf v1.4.3 // indirect
 	github.com/google/go-cmp v0.5.6 // indirect
 	github.com/joho/godotenv v1.3.0
 	github.com/mailru/easyjson v0.7.7 // indirect
